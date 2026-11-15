@@ -1,0 +1,7 @@
+city,n_questions,n_answerable,n_must_refuse,answerable_answered_rate,numerical_accuracy,source_consistency,correct_abstention_rate,false_answer_rate,unsupported_claim_rate,overall_pass_rate
+Guwahati,45,28,17,1.0,1.0,1.0,1.0,0.0,0.0,1.0
+Delhi,45,28,17,1.0,1.0,1.0,1.0,0.0,0.0,1.0
+Jaisalmer,45,28,17,1.0,1.0,1.0,1.0,0.0,0.0,1.0
+Cherrapunji,45,28,17,1.0,1.0,1.0,1.0,0.0,0.0,1.0
+Chennai,45,28,17,1.0,1.0,1.0,1.0,0.0,0.0,1.0
+Leh,45,28,17,1.0,1.0,1.0,1.0,0.0,0.0,1.0

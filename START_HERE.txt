@@ -1,0 +1,15 @@
+HISTORICAL WEATHER ANALYTICS FOR INDIA - START HERE (Windows)
+
+1. Double-click  setup.bat          (one time; installs everything and runs the tests)
+2. Double-click  download_data.bat  (downloads real weather data; leave the window open; it can take a few hours
+                                      because the free service has hourly limits. Safe to stop and run again.)
+3. Double-click  run_app.bat        (opens the platform in your browser)
+
+In the platform: start on Home, then India overview, then Location analysis. The left menu lists every page.
+No data yet?  Tick "Demo mode" in the left sidebar to try the platform with invented data (never use it for real results).
+
+Where is my data?  In the folder  data_cache\india  next to these .bat files. Do not delete it.
+New versions of this project can be extracted over this folder; they never contain data, so your downloads stay safe.
+If a window closes immediately or shows an error, copy the text and send it to your assistant.
+
+Problems?  Open TROUBLESHOOTING.txt - it lists the common errors and their fixes.

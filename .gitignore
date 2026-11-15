@@ -1,0 +1,22 @@
+# Python / environment
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+data_cache/
+
+# Secrets
+.env
+*.env
+.streamlit/secrets.toml
+
+# Local-only files
+.cache/
+.vscode/
+.idea/
+*.log
+*.zip
+Thumbs.db
+weather_report*.pdf
+analysis_config*.json

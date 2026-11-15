@@ -1,0 +1,8 @@
+﻿Guwahati       questions  45  numeric accuracy 100.0%  correct abstention 100.0%  unsupported claims 0.0%  overall 100.0%
+Delhi          questions  45  numeric accuracy 100.0%  correct abstention 100.0%  unsupported claims 0.0%  overall 100.0%
+Jaisalmer      questions  45  numeric accuracy 100.0%  correct abstention 100.0%  unsupported claims 0.0%  overall 100.0%
+Cherrapunji    questions  45  numeric accuracy 100.0%  correct abstention 100.0%  unsupported claims 0.0%  overall 100.0%
+Chennai        questions  45  numeric accuracy 100.0%  correct abstention 100.0%  unsupported claims 0.0%  overall 100.0%
+Leh            questions  45  numeric accuracy 100.0%  correct abstention 100.0%  unsupported claims 0.0%  overall 100.0%
+
+Wrote C:\Users\DELL\Downloads\weather_project_step6_report (1)\evaluation\qa_results.csv, qa_summary_by_city.csv and qa_report.md

@@ -1,0 +1,3 @@
+﻿Data folder: C:\Users\DELL\Downloads\weather_project_step6_report (1)\data_cache\india
+71 of 71 locations cached; 0 missing (1991-01-01 to 2025-12-31).
+Missing: none
