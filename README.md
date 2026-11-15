@@ -1,100 +1,250 @@
-# Historical Weather Analytics Platform
+# 🌦️ Historical Weather Analytics Platform for India
 
-## Step 1 (done): data layer + quality checks
-- `weather_platform/config.py`   variables, units, plausibility bounds, data-source attribution
-- `weather_platform/data/`       city list/search, Open-Meteo fetcher with on-disk cache, synthetic data (tests only)
-- `weather_platform/quality/`    request validation, duplicate/gap/range/unit checks, processing-step log
-- `tests/`                       25 tests (`python -m pytest -q`)
+*An interactive, evidence-grounded platform for analysing 35 years of daily weather data across 71 Indian locations.*
 
-Core rule: **missing is NaN, never 0.** Real zero-rain days are counted separately from missing days.
+> **Describes the past only.** This platform is **not** a weather forecast and is not for safety-critical use. For warnings, use the India Meteorological Department (IMD).
 
-## Run
-    pip install -r requirements.txt
-    python -m pytest -q
-    python demo_step1.py            # offline, synthetic data
-    python demo_step1.py --live     # real data (internet needed)
+---
 
-Data is ERA5 reanalysis via Open-Meteo: gridded model output, not station measurements.
+## 📌 Project Overview
 
-## Step 2 (done): statistics
-- `stats/descriptive.py`  mean, median, min, max, sample std (ignores NaN, reports counts)
-- `stats/rainfall.py`     totals (flagged as lower bound if days missing), wet/dry days, dry spells (missing days break a spell)
-- `stats/baseline.py`     period vs baseline using annual values over the same calendar window; z-score, percentile,
-                          t-based interval (single year) or Welch t-test + Cohen's d + bootstrap CI (multi-year)
-- `stats/summary.py`      one call returning all statistics (evidence for the AI step)
-Run: `python demo_step2.py` (offline) or `python demo_step2.py --live`.
+This project is an **interactive platform for historical weather analysis and visualisation over India**. A user picks a location and a period, and the platform shows charts and statistics, checks data quality, compares the period with a stated baseline (with uncertainty), detects unusual days and long-term trends, and answers plain-language questions.
 
-## Step 3 (done): aggregation, dashboard, CSV export
-- `aggregate.py`   daily / monthly / seasonal values (temperature averaged, rainfall summed); a period needs >= 90 % valid
-                   days, otherwise it is left blank (never a partial total); monthly climatology; year-to-year tables
-- `export.py`      CSV with a source/period/units header; missing values are empty cells, never 0
-- `viz/charts.py`  temperature trend, rainfall bars, year-to-year lines, monthly climatology (units on every axis)
-- `app.py`         Streamlit dashboard: Overview, Charts, Comparisons, Statistics (incl. baseline comparison),
-                   Data quality (processing steps), Data and download
+The central design rule is **trust**:
 
-Run the dashboard:  `streamlit run app.py`   (tick "Use SYNTHETIC demo data" to try it offline)
-Seasons are meteorological (DJF, MAM, JJA, SON); December belongs to the next year's DJF.
+- Every number is computed by tested code. The question-answering layer never generates numbers.
+- Missing days are stored as missing (`NaN`), never as zero rainfall.
+- The assistant **refuses** when the data cannot answer (forecasts, causes, periods outside the data, too many missing days).
+- Every analysis can be **reproduced** from a saved settings file.
 
-## Step 4 (done): evidence-grounded Q&A ("Ask the data" tab)
-- `ai/parse.py`   rule-based question parser (intent, variable, period); never produces numbers
-- `ai/qa.py`      computes answers from the loaded data with the tested stats code; abstains when it cannot answer reliably
-- `ai/verify.py`  every number in an answer must trace to the computed evidence
-- `ai/llm.py`     OPTIONAL wording layer: pass any `prompt -> str` function; output is rejected if it contains an unsupported number
+The scope covers all state and union-territory capitals plus major cities and climate extremes (**71 locations**), from **1991 to 2025** (12,784 daily values per location).
 
-Answers always show: period, date range, variable and units, data source, figures, warnings.
-Abstains for: forecasts, causal "why" questions, trend claims, other locations, unloaded variables,
-periods outside the data, and periods with too much missing data (<90% for totals/counts/baselines, <50% for averages).
-Tests compute expected answers independently with plain pandas.
+---
 
-## India-wide version (done)
-- `data/india_cities.csv`  71 locations: all state/UT capitals plus major cities and climate extremes (see docs/CITIES_DATA.md)
-- `viz/maps.py`            India maps: selected location, value map, category map (missing data is grey, never zero)
-- `india.py`               cached multi-city datasets, resumable `prefetch`, per-city tables, annual anomaly table, SYNTHETIC demo data
-- `mining/climate_regimes.py`  KMeans + Ward + PCA on 24-value monthly climate profiles (data mining), silhouette reported for every k
-- `pages/1_India_overview.py`  maps, annual anomalies, climate-regime clustering
-- `scripts/prefetch_india.py`  download all locations politely and resumably; `scripts/verify_cities_geonames.py` checks coordinates
+## 🗂️ Dataset
 
-Workflow:
-    python scripts/verify_cities_geonames.py          # once, needs internet
-    python scripts/prefetch_india.py --dry-run
-    python scripts/prefetch_india.py --max-new 15     # repeat until all are cached
-    python -m streamlit run app.py                    # then open "India overview" in the sidebar
+| Item | Detail |
+|---|---|
+| Source | [Open-Meteo Historical Weather API](https://open-meteo.com/en/docs/historical-weather-api) |
+| Underlying data | **ERA5 reanalysis** (Copernicus Climate Change Service / ECMWF) |
+| Variables | Daily mean temperature (°C), daily precipitation (mm) |
+| Period | 1991-01-01 to 2025-12-31 (12,784 days per location) |
+| Locations | 71 (listed in `weather_platform/data/india_cities.csv`) |
+| Grid | About 0.25° (~25 km) cells around each city centre |
+| Missing values | 0% in the downloaded ERA5 data |
 
-## PDF report (done: completes Level 1)
-`report/pdf.py` builds the report from the loaded data: scope, source and attribution, data-quality table and processing steps,
-summary statistics, rainfall metrics, charts, monthly averages, baseline comparison, methodology, limitations, and the analysis
-configuration (JSON) for reproducibility. Every page footer says "Not a weather forecast". In the app: Data and download > Generate PDF report.
+> ⚠️ ERA5 is **gridded model output, not station measurements**. Hills, coasts and city effects are smoothed, and rainfall can differ strongly from station records.
 
-## Quick start on Windows (no commands needed)
-Double-click `setup.bat` once, then `download_data.bat` (leave it running), then `run_app.bat`. See `START_HERE.txt`.
-Downloaded data is saved in `data_cache\india` next to these files, wherever you run commands from.
+---
 
-## Level 2: anomalies and trends (done)
-- `anomaly.py`  robust z-scores (median/MAD, same time of year, explicit baseline) for temperature; extreme-rain days above the baseline
-                99th percentile of wet-day amounts; event grouping; Isolation Forest as a clearly-labelled comparison only
-- `trend.py`    Mann-Kendall + Sen's slope with confidence interval, Hamed-Rao autocorrelation correction (checked against the
-                `pymannkendall` package), Benjamini-Hochberg FDR across locations. Pre-whitening was tried first and DROPPED because a
-                simulation test showed it increased false positives.
-- App: "Anomalies and trends" tab per location; India overview page: "Trends" tab with significance after FDR correction.
+## 🧠 Methodology
 
-## Level 2: comparison, reproducibility, AI evaluation (done)
-- `compare.py`          several locations over MATCHING years (complete at every location), identical units enforced, paired differences with 95% CI,
-                        paired t-test and Wilcoxon, distances and shared-grid-cell warnings (India overview > Compare locations)
-- `reproduce.py`        save settings + a results fingerprint; load them back (sidebar > Re-run a saved analysis) and the app confirms whether
-                        the results are identical
-- `ai/evaluate.py`      question set generated from the data with an INDEPENDENT answer key; scores numerical accuracy, source/date-range
-                        consistency, unsupported claims and correct refusals. App: Ask the data > Evaluate; script: `python scripts/evaluate_qa.py`
-                        (writes evaluation/qa_results.csv and qa_report.md). Mutation tests prove the evaluator catches wrong, hallucinated and padded answers.
+### 1️⃣ Data Cleaning (`quality/checks.py`)
 
-## Redesigned interface (multi-page)
-`app.py` is a router; each page is a file in `views/`:
-Home (what the platform is, 3-step guide) | India overview (climate map, yearly anomalies, long-term trends) | Location analysis (control panel, Summary,
-Charts, Statistics, Unusual days and trends, Data quality) | Compare locations | Climate regimes | Ask the data | Reports and export | Methods and trust.
-Design system in `weather_platform/ui.py` (theme in `.streamlit/config.toml`); plain-language text is generated from the computed numbers in `narrative.py`.
-Run: `python -m streamlit run app.py` (or run_app.bat). Demo mode (sidebar) uses synthetic data.
+Seven logged steps: load, unit check, duplicate dates, **missing calendar days added as `NaN`**, physical-bounds check (impossible values → `NaN`), temperature consistency, and per-variable completeness. Zero-rain days are counted separately from missing days. A month, season or year is used only if **at least 90% of its days are valid**.
 
-## Verification status of this version
-- 203 automated tests pass, including a full run through the REAL-DATA code path (cache built by the downloader, partial downloads, missing data, offline fallback).
-- Passes in a brand-new virtual environment created from requirements.txt only (pandas 3.1, numpy 2.5, streamlit 1.66, reportlab 5.1, scikit-learn 1.9).
-- The Streamlit server boots with the theme configuration; static analysis (pyflakes) is clean.
-- See TROUBLESHOOTING.txt for common Windows problems.
+### 2️⃣ Statistics and Baseline Comparison (`stats/`)
+
+Mean, median, extremes, rainfall totals, wet days (≥ 1 mm) and dry spells. A selected period is compared with a **1991–2020 baseline**: difference, z-score, percentile and a 95% interval (t-based for one year; Welch t-test, Cohen's d and bootstrap for several years).
+
+### 3️⃣ Anomaly Detection (`anomaly.py`)
+
+- **Temperature:** robust z-score using the median and MAD of baseline values within ±7 days of the same calendar day; flagged at |z| ≥ 3.5.
+- **Rainfall:** extreme if above the 99th percentile of baseline wet-day amounts (rain is mostly zero, so a z-score does not work).
+- Isolation Forest is shown only as a labelled cross-check.
+
+### 4️⃣ Trend Analysis (`trend.py`)
+
+Mann-Kendall test and Sen's slope on annual values, with the **Hamed-Rao correction** for autocorrelation and **Benjamini-Hochberg** false-discovery-rate control across all 71 locations.
+
+### 5️⃣ Climate Regimes (`mining/climate_regimes.py`)
+
+KMeans on standardised summary features (silhouette reported for every k), checked with Ward clustering, restart stability and a second feature set (adjusted Rand index). A warning appears when the structure is weak.
+
+### 6️⃣ Evidence-Grounded Question Answering (`ai/`)
+
+`parse.py` reads the question → `qa.py` computes the answer with the same tested code → `verify.py` checks that **every number in the text matches a computed figure**. The assistant abstains for forecasts, causes, trend claims, other cities, unloaded variables and periods with too few valid days. `evaluate.py` scores the assistant against an **independent pandas answer key**.
+
+### 7️⃣ Reproducibility (`reproduce.py`)
+
+Settings are saved as JSON together with a **results fingerprint** (a hash of valid-day counts, means and sums). Uploading the file restores the analysis and shows whether the results are reproduced.
+
+---
+
+## 🛠 Technologies Used
+
+- Python 3.12
+- pandas, NumPy, SciPy
+- scikit-learn (KMeans, Ward, PCA, Isolation Forest)
+- Streamlit (multipage app) and Plotly (charts and maps)
+- ReportLab and Matplotlib (PDF report)
+- requests (Open-Meteo API, with on-disk cache)
+- pytest, Streamlit AppTest and pymannkendall (testing)
+
+---
+
+## ✨ Features
+
+- **India overview:** climate maps, yearly anomalies for any year, long-term trend maps with raw and corrected significance counts
+- **Location analysis:** summary, charts, statistics, baseline comparison, unusual days, trend test and data-quality tabs
+- **Compare locations:** 2 to 6 places over matching complete years
+- **Climate regimes:** data-mining view of India's climate groups
+- **Ask the data:** natural-language questions with an evidence table and honest refusals, plus a built-in evaluation panel
+- **Reports and export:** PDF report, daily and aggregated CSV, settings JSON, one-click re-run
+- **Methods and trust:** definitions, limitations and glossary
+- **Demo mode:** synthetic data for trying the app (never real results)
+
+---
+
+## 📂 Project Structure
+
+```
+Historical_Weather_Analytics_Platform/
+│
+├── app.py                      # Streamlit router (st.navigation)
+├── views/                      # The eight pages
+│   ├── home.py  india.py  location.py  compare.py
+│   └── regimes.py  ask.py  export.py  methods.py
+│
+├── weather_platform/
+│   ├── data/                   # fetch.py (API + cache), cities, india_cities.csv, synthetic data
+│   ├── quality/checks.py       # cleaning and quality report
+│   ├── stats/                  # descriptive, rainfall, baseline, summary
+│   ├── anomaly.py  trend.py  compare.py  aggregate.py
+│   ├── mining/climate_regimes.py
+│   ├── ai/                     # parse, qa, verify, evaluate, llm (optional hook)
+│   ├── report/pdf.py           # PDF report
+│   ├── viz/                    # charts and maps
+│   └── reproduce.py  export.py  india.py  narrative.py  state.py  ui.py  config.py
+│
+├── scripts/
+│   ├── prefetch_india.py       # download all locations (resumable)
+│   ├── evaluate_qa.py          # scored Q&A evaluation
+│   └── verify_cities_geonames.py
+│
+├── tests/                      # 214 automated tests
+├── evaluation/                 # Q&A evaluation outputs
+├── evidence/                   # test and data-check logs
+├── docs/CITIES_DATA.md
+├── data_cache/india/           # cached data, one CSV + metadata file per location
+│
+├── setup.bat  download_data.bat  run_app.bat
+├── START_HERE.txt  TROUBLESHOOTING.txt
+├── requirements.txt
+└── README.md
+```
+
+---
+
+## 🚀 Getting Started (Windows)
+
+```powershell
+git clone https://github.com/<your-username>/<repository-name>.git
+cd <repository-name>
+
+.\setup.bat            # creates venv, installs requirements, runs the tests
+.\download_data.bat    # only if data_cache/india is empty (downloads all 71 locations)
+.\run_app.bat          # starts the app
+```
+
+Or manually:
+
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python scripts/prefetch_india.py --auto        # optional: download the data
+python -m streamlit run app.py
+```
+
+Open **http://localhost:8501**. Data and analysis work offline from the cache; map background tiles need internet. The message `ConnectionResetError [WinError 10054]` in the terminal is harmless. See `TROUBLESHOOTING.txt` for more.
+
+**Run the tests:**
+
+```powershell
+python -m pytest
+```
+
+---
+
+## 📊 System Workflow
+
+Open-Meteo / ERA5 → `prefetch_india.py` → local cache → cleaning and quality checks → statistics, anomalies, trends, comparison, climate regimes → Streamlit app, question answering and PDF report
+
+---
+
+## 📈 Key Results
+
+| Check | Result |
+|---|---|
+| Guwahati, July 2022 rainfall | **402.4 mm**, identical in pandas, the app and a hand sum of API values |
+| Q&A evaluation (6 cities × 45 questions = 270) | **100%** numerical accuracy, **100%** correct abstention, **0%** unsupported claims |
+| Automated tests | **214 passed** |
+| Temperature trends (71 locations) | 37 significant; **31 after** false-discovery-rate correction |
+| Rainfall trends (71 locations) | 49 significant; **42 after** correction (flagged as suspicious, see Limitations) |
+| Climate regimes (4 features, k = 4) | Silhouette **0.37** (weak structure) |
+
+---
+
+## ⚠️ Limitations
+
+- ERA5 is a ~25 km reanalysis grid, not station data, and has **not yet been validated against IMD data**.
+- 42 of 71 significant rainfall trends is far more than station studies usually find, so rainfall trends are treated as a possible **reanalysis artefact, not climate change**.
+- Some results, such as Leh's trend, look suspicious and are not yet verified.
+- Climate groups are a partition of a continuum, not natural classes (silhouette about 0.3–0.4).
+- The assistant is rule-based; its 100% score covers **supported question forms only**.
+- Results depend on analyst choices (baseline years, wet-day threshold, completeness rule).
+
+---
+
+## 🔮 Future Improvements
+
+- Validate rainfall and temperature against IMD station or gridded data
+- Detect abrupt shifts per location (for example a Pettitt test)
+- Score the assistant on questions written in a user's own wording
+- Forecast post-processing judged by skill scores
+- Optional language-model wording layer (numbers still verified)
+- Public hosting of the app
+
+---
+
+## 📚 Learning Outcomes
+
+- End-to-end data pipeline: acquisition, caching, cleaning, analysis and presentation
+- Trend statistics for climate data: autocorrelation correction and multiple-testing control
+- Unsupervised learning with honest quality checks
+- Building a question-answering system that verifies its own numbers and abstains safely
+- Reproducible analysis with saved settings and results fingerprints
+- Software testing: independent expected values, simulations and headless UI tests
+
+---
+
+## 👩‍💻 Project Information
+
+- **Project Title:** Historical Weather Analytics Platform for India
+- **Author Name:** Sanghita Roy
+- **Roll Number:** 23035010421
+- **Program:** B.Sc. (Hons.) Data Science & Artificial Intelligence
+- **Institute:** IIT Guwahati
+
+---
+
+## 🙏 Data Attribution
+
+- Weather data: [Open-Meteo](https://open-meteo.com) Historical Weather API (CC BY 4.0)
+- Source dataset: ERA5 reanalysis, Copernicus Climate Change Service / ECMWF
+- City coordinates checked with [GeoNames](https://www.geonames.org) (CC BY 4.0)
+
+---
+
+## ⭐ Academic Purpose
+
+This project was developed as part of academic learning to demonstrate understanding of:
+
+- Data acquisition, cleaning and quality control
+- Statistical analysis of climate data
+- Data mining and clustering
+- Trustworthy, evidence-grounded question answering
+- Reproducible, tested analytics software
+
+> ⚠️ **Disclaimer:** This platform is for research and educational purposes only. It describes historical, reanalysis-based data, is **not** a weather forecast, and must not be used for safety-critical decisions.
